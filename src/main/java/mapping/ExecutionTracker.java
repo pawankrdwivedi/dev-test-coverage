@@ -1,6 +1,9 @@
 package mapping;
 
+import java.io.File;
 import java.util.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 
 public class ExecutionTracker {
     private static final ThreadLocal<String> currentTest = new ThreadLocal<>();
@@ -19,7 +22,21 @@ public class ExecutionTracker {
     }
 
     public static void writeReport(String path) throws Exception {
-        new com.fasterxml.jackson.databind.ObjectMapper().writerWithDefaultPrettyPrinter()
-            .writeValue(new java.io.File(path), testToMethods);
+        ObjectMapper mapper = new ObjectMapper();
+        File file = new File(path);
+        Map<String, Object> existingData = new HashMap<>();
+        if (file.exists() && file.length() > 0) {
+            existingData = mapper.readValue(file, Map.class);
+        }
+
+        // merge new data
+        existingData.putAll(testToMethods);
+
+        // write back pretty-printed JSON
+        mapper.writerWithDefaultPrettyPrinter().writeValue(file, existingData);
+
+        File projectDir = new File(ConfigReader.getProperty("proj.dir"));
+        SourceAnalyzer.listClassesAndMethods(projectDir);
+        FindUntestedMethods.untestedDevMethods();
     }
 }

@@ -7,7 +7,7 @@ import org.aspectj.lang.JoinPoint;
 @Aspect
 public class AspectJExecutionTracker {
 
-    @Before("execution(* app.Calculator..*(..))")
+    @Before("execution(* app.calculator..*(..))")
     public void pointcutInsideDevMethods(JoinPoint joinPoint) {
         String methodName = joinPoint.getSignature().getName();
         String className = joinPoint.getTarget().getClass().getSimpleName();

@@ -1,8 +1,8 @@
-package test;
-
-import app.Calculator;
+import app.calculator.Calculator;
+import mapping.ConfigReader;
 import mapping.ExecutionTracker;
 import org.junit.jupiter.api.*;
+
 
 public class CalculatorTest {
 
@@ -43,6 +43,6 @@ public class CalculatorTest {
 
     @AfterAll
     static void dumpMapping() throws Exception {
-        ExecutionTracker.writeReport("target/test-method-mapping.json");
+        ExecutionTracker.writeReport(ConfigReader.getProperty("test-method-mapping.location"));
     }
 }
