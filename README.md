@@ -16,4 +16,6 @@ mvn jacoco:report
 ```bash
 Jacoco Report: ./target/site/jacoco/mapping/index.html
 Dev Test Mapper: ./target/test-method-mapping.json
+All Dev Code Methods List: ./target/dev-methods.json
+All Untested Dev Code Methods List: ./target/untested-methods.json
 ```
