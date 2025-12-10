@@ -7,13 +7,10 @@
     <version>1.0-SNAPSHOT</version>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <!--<maven.compiler.source>11</maven.compiler.source>
-        <maven.compiler.target>11</maven.compiler.target>-->
         <java.version>21</java.version>
         <junit.version>5.10.0</junit.version>
         <jackson.version>2.19.2</jackson.version>
-        <aspectj.version>1.9.21.1</aspectj.version>
-        <wiremock.version>3.13.1</wiremock.version>
+        <aspectj.version>1.9.25</aspectj.version>
     </properties>
     <dependencies>
         <dependency>
@@ -47,67 +44,13 @@
             <artifactId>javaparser-core</artifactId>
             <version>3.26.3</version>
         </dependency>
-        <!-- WireMock (standalone) for tests -->
-        <!-- https://mvnrepository.com/artifact/org.wiremock/wiremock -->
-        <dependency>
-            <groupId>org.wiremock</groupId>
-            <artifactId>wiremock</artifactId>
-            <version>${wiremock.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <!-- AssertJ (optional) for fluent assertions -->
-        <dependency>
-            <groupId>org.assertj</groupId>
-            <artifactId>assertj-core</artifactId>
-            <version>4.0.0-M1</version>
-        </dependency>
     </dependencies>
     <build>
         <plugins>
             <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>aspectj-maven-plugin</artifactId>
-                <version>1.15.0</version> <!-- Use a recent compatible version -->
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>compile</goal>
-                            <goal>test-compile</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <complianceLevel>${java.version}</complianceLevel>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
-                    <Xlint>warning</Xlint>
-                    <aspectLibraries>
-                        <!-- If you have external aspect libraries, declare them here -->
-                        <!-- <aspectLibrary>
-                            <groupId>com.example</groupId>
-                            <artifactId>my-aspect-library</artifactId>
-                        </aspectLibrary> -->
-                    </aspectLibraries>
-                    <showWeaveInfo>true</showWeaveInfo>
-                </configuration>
-                <dependencies>
-                    <dependency>
-                        <groupId>org.aspectj</groupId>
-                        <artifactId>aspectjtools</artifactId>
-                        <version>${aspectj.version}</version>
-                    </dependency>
-                    <dependency>
-                        <groupId>org.aspectj</groupId>
-                        <artifactId>aspectjrt</artifactId>
-                        <version>${aspectj.version}</version>
-                    </dependency>
-                </dependencies>
-            </plugin>
-            <!-- You might also need the maven-compiler-plugin if you have regular Java sources -->
-            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.11.0</version> <!-- Use a recent compatible version -->
+                <version>3.14.1</version> <!-- Use a recent compatible version -->
                 <configuration>
                     <source>${java.version}</source>
                     <target>${java.version}</target>
@@ -116,52 +59,11 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.0.0</version>
+                <version>3.5.4</version>
                 <configuration>
                     <argLine>
-                        -javaagent:${settings.localRepository}/org/jacoco/org.jacoco.agent/0.8.10/org.jacoco.agent-0.8.10-runtime.jar=destfile=target/jacoco.exec
+                        -javaagent:${settings.localRepository}/org/aspectj/aspectjweaver/${aspectj.version}/aspectjweaver-${aspectj.version}.jar
                     </argLine>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.jacoco</groupId>
-                <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.10</version>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>report</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>aspectj-maven-plugin</artifactId>
-                <version>1.15.0</version>
-                <configuration>
-                    <complianceLevel>${java.version}</complianceLevel>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
-                    <verbose>true</verbose>
-                    <showWeaveInfo>true</showWeaveInfo>
-                </configuration>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>compile</goal>
-                            <goal>test-compile</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.14.0</version>
-                <configuration>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
                 </configuration>
             </plugin>
         </plugins>
