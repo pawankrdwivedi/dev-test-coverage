@@ -8,9 +8,10 @@ public class ExecutionTracker {
     private static final ThreadLocal<String> currentTest = new ThreadLocal<>();
     private static final Map<String, Set<String>> testToMethods = new HashMap<>();
 
-    public static void setCurrentTest(String testName) {
-        currentTest.set(testName);
-        testToMethods.putIfAbsent(testName, new HashSet<>());
+    public static void setCurrentTest(Class<?> testClass, String testMethod) {
+        String fullTestName = testClass.getSimpleName() + "." + testMethod;
+        currentTest.set(fullTestName);
+        testToMethods.putIfAbsent(fullTestName, new HashSet<>());
     }
 
     public static void logMethod(String className, String methodName) {
@@ -42,5 +43,6 @@ public class ExecutionTracker {
         File projectDir = new File(ConfigReader.getProperty("proj.dir"));
         SourceAnalyzer.listClassesAndMethods(projectDir);
         FindUntestedMethods.untestedDevMethods();
+        GenerateHtmlReport.generateHtmlReport();
     }
 }
