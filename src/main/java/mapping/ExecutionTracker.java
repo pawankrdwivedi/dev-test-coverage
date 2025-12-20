@@ -43,6 +43,5 @@ public class ExecutionTracker {
         File projectDir = new File(ConfigReader.getProperty("proj.dir"));
         SourceAnalyzer.listClassesAndMethods(projectDir);
         FindUntestedMethods.untestedDevMethods();
-        GenerateHtmlReport.generateHtmlReport();
     }
 }

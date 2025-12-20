@@ -26,7 +26,6 @@ public class EmployeeApiClientTest {
         ExecutionTracker.writeReport(ConfigReader.getProperty("test-method-mapping.location"));
     }
 
-
     @Test
     public void tc_GetAllEmployees() throws Exception {
         client=new EmployeeApiClient(BASE_URL);

@@ -15,15 +15,30 @@ public class GenerateHtmlReport {
     public static void generateHtmlReport() throws Exception {
         Path testDevJsonPath = Path.of(ConfigReader.getProperty("test-method-mapping.location"));
         Path uncoveredDevJsonPath = Path.of(ConfigReader.getProperty("untested-dev-methods.location"));
+        Path testExecutionStatusJsonPath=Path.of(ConfigReader.getProperty("test-case-status.location"));
         Path outputHtml = Path.of(ConfigReader.getProperty("html-report.location"));
 
         ObjectMapper mapper = new ObjectMapper();
-        // 1️⃣ Read JSON inputS (Test Dev Mapping and Uncovered Methods)
+        /***
+         * 1️⃣ Read JSON inputS
+          */
+        //Test Case Execution Status
+        Map<String, String> testExecutionStatus = new java.util.HashMap<>();
+        var root = mapper.readTree(Files.readString(testExecutionStatusJsonPath));
+        var tests = root.path("tests");
+        for (var t : tests) {
+            String key = t.path("className").asText()
+                    + "." + t.path("methodName").asText();
+            String status = t.path("status").asText("UNKNOWN");
+            testExecutionStatus.put(key, status);
+        }
+           //Test<--> Dev Mapping
         Map<String, List<String>> testToMethods =
                 mapper.readValue(
                         Files.readString(testDevJsonPath),
                         new TypeReference<>() {}
                 );
+       //Uncovered Dev Methods
         List<String> uncoveredDevMethods =
                 mapper.readValue(
                         Files.readString(uncoveredDevJsonPath),
@@ -31,7 +46,7 @@ public class GenerateHtmlReport {
                 );
 
         // 2️⃣ Generate HTML
-        String html = generateHtml(testToMethods, uncoveredDevMethods);
+        String html = generateHtml(testToMethods, uncoveredDevMethods,testExecutionStatus);
 
         // 3️⃣ Write HTML output
         Files.writeString(outputHtml, html);
@@ -40,7 +55,8 @@ public class GenerateHtmlReport {
 
     private static String generateHtml(
             Map<String, List<String>> testToMethods,
-            List<String> uncoveredDevMethods
+            List<String> uncoveredDevMethods,
+            Map<String, String> testExecutionStatus
     )
     {
         StringBuilder html = new StringBuilder();
@@ -101,42 +117,76 @@ public class GenerateHtmlReport {
                 .append("Automated Test ↔ Source Code Traceability</div>");
         // ---------------- TABS ----------------
         html.append("<div class='tabs' style='text-align:center; margin-bottom:20px;'>")
-                //Tab 1- Test ↔ Dev Covered Methods
+                //Tab 1- Test Case Execution Status
                 .append("<div id='tab1-tab' class='tab active' ")
-                .append("style='display:inline-block; font-weight:bold;' ")
-                .append("onclick=\"showTab('tab1')\">")
-                .append("Test ↔ Dev Covered Methods</div>")
-                //Tab 2- Test ↔ Dev UnCovered Methods
-                .append("<div id='tab2-tab' class='tab' ")
                 .append("style='display:inline-block; font-weight:bold; margin-left:10px;' ")
+                .append("onclick=\"showTab('tab1')\">")
+                .append("Test Execution Status</div>")
+                //Tab 2- Test ↔ Dev Covered Methods
+                .append("<div id='tab2-tab' class='tab' ")
+                .append("style='display:inline-block; font-weight:bold;' ")
                 .append("onclick=\"showTab('tab2')\">")
-                .append("Test ↔ Dev UnCovered Methods</div>")
-                //Tab 2- Obsolete Test Cases
+                .append("Test ↔ Dev Covered Methods</div>")
+                //Tab 3- Test ↔ Dev UnCovered Methods
                 .append("<div id='tab3-tab' class='tab' ")
                 .append("style='display:inline-block; font-weight:bold; margin-left:10px;' ")
                 .append("onclick=\"showTab('tab3')\">")
+                .append("Test ↔ Dev UnCovered Methods</div>")
+                //Tab 4- Obsolete Test Cases
+                .append("<div id='tab4-tab' class='tab' ")
+                .append("style='display:inline-block; font-weight:bold; margin-left:10px;' ")
+                .append("onclick=\"showTab('tab4')\">")
                 .append("Obsolete Test Cases</div>")
                 .append("</div>\n");
         // ============================================================
-        // TAB 1 : TEST ↔ DEV MAPPING
+        // TAB 1 : TEST EXECUTION STATUS
         // ============================================================
         html.append("<div id='tab1' class='tab-content active'>\n");
+        html.append("<h3>📊 Test Case Execution Status</h3>\n");
         html.append("<input ")
                 .append("id='search-tab1' ")
                 .append("onkeyup=\"filterTab('tab1','search-tab1')\" ")
+                .append("placeholder='Search test execution status...' ")
+                .append("style='width:300px; padding:6px; margin-bottom:10px;' />");
+        html.append("<table>\n<thead><tr>")
+                .append("<th>TestClass</th>")
+                .append("<th>TestCase</th>")
+                .append("<th>Status</th>")
+                .append("</tr></thead><tbody>\n");
+        for (var entry : testExecutionStatus.entrySet()) {
+            String[] parts = entry.getKey().split("\\.");
+            String status = entry.getValue();
+            String color =
+                    "PASSED".equals(status) ? "#d4edda" :
+                            "FAILED".equals(status) ? "#f8d7da" :
+                                    "SKIPPED".equals(status) ? "#fff3cd" :
+                                            "#eeeeee";
+            html.append("<tr style='background-color:")
+                    .append(color).append(";'>")
+                    .append("<td>").append(parts[0]).append("</td>")
+                    .append("<td>").append(parts[1]).append("</td>")
+                    .append("<td>").append(status).append("</td>")
+                    .append("</tr>\n");
+        }
+        html.append("</tbody></table>");
+        html.append("</div>"); // END TAB 4
+        // ============================================================
+        // TAB 2 : TEST ↔ DEV MAPPING
+        // ============================================================
+        html.append("<div id='tab2' class='tab-content'>\n");
+        html.append("<h3>✅ Test Cases with Dev Function Mapping</h3>\n");
+        html.append("<input ")
+                .append("id='search-tab2' ")
+                .append("onkeyup=\"filterTab('tab2','search-tab2')\" ")
                 .append("placeholder='Search test cases or dev methods...' ")
                 .append("style='width:300px; padding:6px; margin-bottom:10px;' />");
-        // ---- SECTION 1: TEST WITH DEV METHODS ----
-        html.append("<h3>✅ Test Cases with Dev Function Mapping</h3>\n");
         html.append("<table>\n<thead><tr>")
                 .append("<th>TestClass</th><th>TestCase</th><th>DevClass</th><th>DevMethod</th>")
                 .append("</tr></thead><tbody>\n");
-
         int idx = 0;
         for (var entry : testToMethods.entrySet()) {
             List<String> devMethods = entry.getValue();
             if (devMethods == null || devMethods.isEmpty()) continue;
-
             String[] testParts = entry.getKey().split("\\.");
             String grp = "grp" + idx++;
 
@@ -165,13 +215,13 @@ public class GenerateHtmlReport {
         html.append("</tbody></table>");
         html.append("</div>"); // END TAB 1
         // ============================================================
-        // TAB 2 : UNCOVERED DEV METHODS
+        // TAB 3 : UNCOVERED DEV METHODS
         // ============================================================
-        html.append("<div id='tab2' class='tab-content'>");
+        html.append("<div id='tab3' class='tab-content'>");
         html.append("<h3>❌ Dev Methods Not Covered by Any Test</h3>\n");
         html.append("<input ")
-                .append("id='search-tab2' ")
-                .append("onkeyup=\"filterTab('tab2','search-tab2')\" ")
+                .append("id='search-tab3' ")
+                .append("onkeyup=\"filterTab('tab3','search-tab3')\" ")
                 .append("placeholder='Search uncovered dev methods...' ")
                 .append("style='width:300px; padding:6px; margin-bottom:10px;' />");
         html.append("<table>\n<thead><tr>")
@@ -187,18 +237,18 @@ public class GenerateHtmlReport {
         }
 
         html.append("</tbody></table>");
-        html.append("</div>"); // END TAB 2
+        html.append("</div>");
+        // END TAB 3
         // ============================================================
-        // TAB 23 : OBSOLETE TEST CASES
+        // TAB 4 : OBSOLETE TEST CASES
         // ============================================================
-        html.append("<div id='tab3' class='tab-content'>\n");
+        html.append("<div id='tab4' class='tab-content'>\n");
+        html.append("<h3>🚫 Obsolete Test Cases</h3>\n");
         html.append("<input ")
-                .append("id='search-tab3' ")
-                .append("onkeyup=\"filterTab('tab3','search-tab2')\" ")
+                .append("id='search-tab4' ")
+                .append("onkeyup=\"filterTab('tab4','search-tab4')\" ")
                 .append("placeholder='Search test cases...' ")
                 .append("style='width:300px; padding:6px; margin-bottom:10px;' />");
-
-        html.append("<h3>🚫 Obsolete Test Cases</h3>\n");
         html.append("<table>\n<thead><tr>")
                 .append("<th>TestClass</th><th>TestCase</th>")
                 .append("</tr></thead><tbody>\n");
@@ -210,7 +260,7 @@ public class GenerateHtmlReport {
                     .append("</tr>\n");
         }
         html.append("</tbody></table>");
-        html.append("</div>"); // END TAB 2
+        html.append("</div>"); // END TAB 4
         html.append("</body></html>");
         return html.toString();
     }
