@@ -41,7 +41,7 @@ public class ExecutionTracker {
         mapper.writerWithDefaultPrettyPrinter().writeValue(file, existingData);
 
         File projectDir = new File(ConfigReader.getProperty("proj.dir"));
-        SourceAnalyzer.listClassesAndMethods(projectDir);
-        FindUntestedMethods.untestedDevMethods();
+        //SourceAnalyzer.listClassesAndMethods(projectDir);
+        //FindUntestedMethods.untestedDevMethods();
     }
 }

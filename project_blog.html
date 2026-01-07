@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+
+  <!-- Primary SEO -->
+  <title>Automated Test-to-Code Execution Mapping — Test → Method Traceability</title>
+  <meta name="description" content="Map automated tests to executed Java methods using a Spring AOP based, agent-free approach. Improve CI speed, regulatory traceability and test impact analysis." />
+  <meta name="keywords" content="test impact analysis, test to code mapping, Spring AOP, Java testing, CI optimization, test traceability, JaCoCo alternative" />
+
+  <!-- Open Graph / Social -->
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Automated Test-to-Code Execution Mapping — Test → Method Traceability">
+  <meta property="og:description" content="Map tests to executed Java methods with an agent-free Spring AOP solution. Save CI time, improve traceability, and enable AI-assisted test generation." />
+  <meta property="og:image" content="/assets/test-to-code-mapping-og.png">
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Automated Test-to-Code Execution Mapping — Test → Method Traceability" />
+  <meta name="twitter:description" content="Map tests to executed Java methods with an agent-free Spring AOP solution. Save CI time, improve traceability, and enable AI-assisted test generation." />
+
+  <!-- Structured Data (Article) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "Automated Test-to-Code Execution Mapping — Test → Method Traceability for Java",
+    "description": "Map tests to executed Java methods with an agent-free Spring AOP solution. Save CI time, improve traceability, and enable AI-assisted test generation.",
+    "author": { "@type": "Person", "name": "Pawan Dwivedi" },
+    "publisher": { "@type": "Organization", "name": "Engineering Blog", "logo": {"@type":"ImageObject","url":"/assets/logo.png" }},
+    "datePublished": "2025-12-08",
+    "mainEntityOfPage": {"@type":"WebPage","@id":"/blog/test-to-code-mapping"}
+  }
+  </script>
+
+  <style>
+    :root{--accent:#0b5fff;--muted:#6b7280;--bg:#fff;--card:#f8fafc;font-family:Inter,Segoe UI,Roboto,Arial,sans-serif}
+    body{margin:0;background:var(--bg);color:#0f172a;line-height:1.6}
+    .container{max-width:980px;margin:48px auto;padding:0 20px}
+    header h1{font-size:28px;margin:0 0 6px}
+	header h1 {text-align: center;}
+    header p.lead{margin:0 0 18px;color:var(--muted)}
+	header p {text-align: center;}
+    .meta{font-size:13px;color:var(--muted);margin-bottom:18px}
+    .card{background:var(--card);padding:18px;border-radius:12px;box-shadow:0 4px 18px rgba(12,18,30,0.04);margin-bottom:18px}
+    h2{color:#061233}
+    pre{background:#0b1220;color:#dbeafe;padding:12px;border-radius:8px;overflow:auto}
+    .diagram{display:flex;gap:12px;flex-wrap:wrap;margin:18px 0}
+    .diagram > .box{flex:1;min-width:280px}
+    .download{display:inline-block;margin-top:12px;padding:10px 14px;border-radius:8px;background:var(--accent);color:white;text-decoration:none}
+    footer{margin-top:36px;color:var(--muted);font-size:14px}
+    @media (max-width:620px){header h1{font-size:22px}}
+	body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <header>
+		<h1>Automated Test-to-Code Execution Mapping</h1>  
+		<p class="lead">Tests → Executed Methods mappings that drive test impact analysis, regulatory traceability and CI optimizations.</p>
+    </header>
+
+    <article>
+		<section class="card">
+			<h2>Summary</h2>
+				<p>Modern software development increasingly requires deep insights into how automated tests interact with the underlying implementation. Traditional coverage tools (JaCoCo, Clover) provide line or branch coverage but lack <strong>semantic mapping between which test script execution invoked development code method</strong> in the application.
+				<br>
+				<br>This project introduces a framework-agnostic, aspect-oriented instrumentation solution for Java based applications that:
+				<br>• Intercepts runtime execution of application methods
+				<br>• Identifies the test method responsible for each execution.
+				<br>• Produces a <strong>machine-readable JSON report mapping <em>test cases → invoked dev methods</em></strong>.
+				<br>• Eliminates the complexity and unreliability of JVM java agent-based weaving by using <strong>Spring AOP</strong> for broad compatibility.
+				<br>
+				<br>The resulting system provides a new level of observability for quality engineering teams, enabling automated traceability, impact analysis, regression minimization, and requirements verification.
+				</p>
+		</section>
+		<section class="card">
+			<h2>Problem Statement</h2>
+				<p>Organizations often face the following challenges in quality engineering.
+				<br><strong>1. Unknown test impact</strong>
+				<br>It is difficult to reliably determine which test cases exercise which code paths.
+				<br><strong>2. Over-testing and redundant execution</strong>
+				<br>Without mapping, CI systems often re-run large test suites unnecessarily.
+				<br><strong>3. Poor traceability to requirements</strong>
+				<br>Engineers struggles to verify that specific requirements are covered by specific tests.
+				<br><strong>4. Existing tools are inadequate</strong>
+				<br>Tools like JaCoCo show coverage percentages but no <strong><em>test → dev code methods</em> mapping</strong>.
+				<br>
+				</p>
+		</section>
+		<section class="card">
+			<h2>Overview</h2>
+			<p>The system consists of four major components:</p>
+			<ol>
+				<li>
+					<strong>Aspect-Oriented Execution Tracker</strong>
+					<br>• Fully qualified method signature
+					<br>• Timestamp (optional)
+					<br>• Thread context
+					<br>• Test name associated with current call
+					<br>
+				</li>
+				<li>
+					<strong>Test Execution Listener for Precise Test Context</strong>
+					<br>• beforeTestMethod () → set current test name in Thread Local
+					<br>• afterTestMethod () → clear the context.
+					<br>This eliminates stack-trace heuristics and provides <strong>perfect attribution</strong> of executions to tests.
+					<br>
+				</li>
+				<li>
+					<strong>Execution Recorder</strong>
+					<br>• Receives method execution events
+					<br>• Stores mappings in Map<String, Set<String>>
+					<br>• Writes results to target/ {filename}.json
+					<br>
+				</li>
+				<li>
+					<strong>JSON Output</strong>
+			<pre>{
+	"com.example.calculator.CalculatorServiceTest.testDivision" : [ "CalculatorService.divide(..)" ],
+	"com.example.calculator.CalculatorServiceTest.testAddition" : [ "CalculatorService.add(..)" ]
+}</pre>
+				This format is ideal for downstream use in:
+				<br>• Test impact analysis.
+				<br>• Traceability dashboards.
+				<br>• Change-based test selection.
+				<br>• Regulatory documentation
+				</li>        
+			</ol>
+		</section>
+      
+		<section class="card">
+            <h2>System Architecture</h2>
+			<img src="System_architecture.png" alt="System Architecture"/>
+		</section>
+
+		<section class="card">
+			<h2>Use Cases</h2>
+			<ol>
+				<li>
+					<strong>Test Impact Analysis (TIA)</strong>
+					<br>Identify the smallest set of tests to run after code changes:
+					<br>• Compare changed classes.
+					<br>• Find tests that map to those classes.
+					<br>• Execute only impacted tests.
+				</li>
+				<li>
+					<strong>Regulatory Traceability</strong>
+					<br>• Link requirement → test → code automatically:
+					<br>• Requirement mappings to tests to methods.
+					<br>• Produces end-to-end traceability reports.
+				</li>
+				<li>
+					<strong>CI Pipeline Optimization</strong>
+					<br>Save 70–90% test execution time by skipping unaffected tests
+				</li>
+				<li>
+					<strong>Test Gaps / Missing Coverage</strong>
+					<br>If a method is not listed in output:
+					<br>• No current tests exercise it.
+					<br>• Teams can automatically generate missing tests.
+				</li>                  
+			</ol>
+		</section>
+		<section class="card">
+			<h2>Future Enhancements</h2>
+			<ol>
+				<li>
+					<strong>Graph QL / REST Mapping</strong>
+					<br>Add correlation from HTTP requests → test → method execution.
+				</li>
+				<li>
+					<strong>Neo4j Graph Visualization</strong>
+					<br>Store execution graphs for visualization: Test Node → Method Node relationships.
+				</li>
+				<li>
+					<strong>AI-assisted Test Impact Prediction</strong>
+					<br>Use historical JSON mappings with embeddings (pgvector) to:
+					<br>• Predict impacted tests from natural-language description of changes.
+					<br>• Auto-suggest missing tests.
+				</li>                  
+			</ol>
+		</section>
+		<section class="card">
+			<h2>Conclusion</h2>
+			<p>This solution provides a <strong>robust, stable, agent-free, and future-proof</strong> approach to mapping automated tests to executed development methods. By leveraging Spring AOP and Test Execution Listener mechanisms, it avoids JVM compatibility problems and delivers precise execution mappings ideal for modern QA, DevOps, and compliance workflows.
+			<br>Its JSON-based output integrates seamlessly into CI/CD pipelines and analytics systems.
+			<br>
+			<br>This is a foundational building block for:
+			<br>• AI-driven test generation
+			<br>• Smart regression selection
+			<br>• End-to-end requirements traceability
+			<br>• Automated impact analysis pipelines
+			</p>
+		</section>
+	</article>
+    <!-- Hidden anchors for download (placeholder for server-side assets) -->
+    <a id="architecture" style="display:none"></a>
+    <a id="infographic" style="display:none"></a>
+  </main>
+</body>
+</html>

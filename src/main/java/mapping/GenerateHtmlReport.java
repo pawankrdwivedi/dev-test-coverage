@@ -1,267 +1,250 @@
 package mapping;
-
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class GenerateHtmlReport {
 
-
     public static void generateHtmlReport() throws Exception {
+
         Path testDevJsonPath = Path.of(ConfigReader.getProperty("test-method-mapping.location"));
         Path uncoveredDevJsonPath = Path.of(ConfigReader.getProperty("untested-dev-methods.location"));
-        Path testExecutionStatusJsonPath=Path.of(ConfigReader.getProperty("test-case-status.location"));
+        Path testExecutionStatusJsonPath = Path.of(ConfigReader.getProperty("test-case-status.location"));
         Path outputHtml = Path.of(ConfigReader.getProperty("html-report.location"));
 
         ObjectMapper mapper = new ObjectMapper();
-        /***
-         * 1️⃣ Read JSON inputS
-          */
-        //Test Case Execution Status
-        Map<String, String> testExecutionStatus = new java.util.HashMap<>();
+
+        // ============================
+        // 1️⃣ READ TEST EXECUTION STATUS
+        // ============================
+        Map<String, String> testExecutionStatus = new LinkedHashMap<>();
+
         var root = mapper.readTree(Files.readString(testExecutionStatusJsonPath));
         var tests = root.path("tests");
+
         for (var t : tests) {
             String key = t.path("className").asText()
                     + "." + t.path("methodName").asText();
             String status = t.path("status").asText("UNKNOWN");
             testExecutionStatus.put(key, status);
         }
-           //Test<--> Dev Mapping
+
+        // ============================
+        // 2️⃣ READ TEST ↔ DEV MAPPING
+        // ============================
         Map<String, List<String>> testToMethods =
                 mapper.readValue(
                         Files.readString(testDevJsonPath),
                         new TypeReference<>() {}
                 );
-       //Uncovered Dev Methods
-        List<String> uncoveredDevMethods =
+
+        // ============================
+        // 3️⃣ READ ALL DEV METHODS
+        // ============================
+        List<String> allDevMethods =
                 mapper.readValue(
                         Files.readString(uncoveredDevJsonPath),
                         new TypeReference<>() {}
                 );
 
-        // 2️⃣ Generate HTML
-        String html = generateHtml(testToMethods, uncoveredDevMethods,testExecutionStatus);
+        // ============================
+        // 4️⃣ CALCULATE UNCOVERED METHODS
+        // ============================
+        Set<String> covered = new HashSet<>();
+        for (List<String> methods : testToMethods.values()) {
+            if (methods != null) covered.addAll(methods);
+        }
 
-        // 3️⃣ Write HTML output
+        List<String> uncoveredDevMethods = new ArrayList<>();
+        for (String dev : allDevMethods) {
+            if (!covered.contains(dev)) {
+                uncoveredDevMethods.add(dev);
+            }
+        }
+
+        // ============================
+        // 5️⃣ GENERATE HTML
+        // ============================
+        String html = generateHtml(testToMethods, uncoveredDevMethods, testExecutionStatus);
+
         Files.writeString(outputHtml, html);
         System.out.println("✅ HTML report generated: " + outputHtml.toAbsolutePath());
     }
 
+    // ================================================================
+    // HTML GENERATOR
+    // ================================================================
     private static String generateHtml(
             Map<String, List<String>> testToMethods,
             List<String> uncoveredDevMethods,
             Map<String, String> testExecutionStatus
-    )
-    {
+    ) {
+
         StringBuilder html = new StringBuilder();
-        // ---------------- PRE-CALC ----------------
+
+        // ============================
+        // PRE-CALC: OBSOLETE TESTS
+        // ============================
         List<String> noCoverageTests = new ArrayList<>();
         for (var e : testToMethods.entrySet()) {
             if (e.getValue() == null || e.getValue().isEmpty()) {
                 noCoverageTests.add(e.getKey());
             }
         }
-        // ---------------- HTML HEADER ----------------
-        html.append("<!DOCTYPE html>\n<html>\n<head>\n")
-                .append("<title>Test ↔ Dev Coverage Report</title>\n")
 
-                // ---------- CSS ----------
-                .append("<style>\n")
-                .append("body { font-family: Arial; padding: 20px; }\n")
-                .append(".tabs { margin-bottom: 15px; }\n")
-                .append(".tab { display: inline-block; padding: 10px 15px; cursor: pointer; background: #eee; margin-right: 5px; }\n")
-                .append(".tab.active { background: #4285f4; color: white; }\n")
-                .append(".tab-content { display: none; }\n")
-                .append(".tab-content.active { display: block; }\n")
-                .append("table { width: 100%; border-collapse: collapse; margin-top: 10px; }\n")
-                .append("th, td { border: 1px solid #ccc; padding: 8px; }\n")
-                .append("th { background: #f4f4f4; }\n")
-                //.append("tr.test-row { background: #e8f0fe; cursor: pointer; font-weight: bold; }\n")
-                .append("tr.test-row { background: #e8f0fe; cursor: pointer; font-weight: normal; }\n")
-                .append("tr.dev-row { display: none; background: #fafafa; }\n")
-                .append("tr.no-dev { background-color: #ffebeb; color: #a00000; font-weight: normal; }\n")
-                //.append("tr.no-dev { background-color: #ffebeb; color: #a00000; font-weight: bold; }\n")
-                .append("</style>\n")
-                // ---------- JS ----------
-                .append("<script>\n")
-                .append("function showTab(id) {\n")
-                .append("  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));\n")
-                .append("  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));\n")
-                .append("  document.getElementById(id).classList.add('active');\n")
-                .append("  document.getElementById(id + '-tab').classList.add('active');\n")
-                .append("}\n")
-                .append("function toggle(cls) {\n")
-                .append("  document.querySelectorAll('.' + cls).forEach(r => {\n")
-                .append("    r.style.display = r.style.display === 'table-row' ? 'none' : 'table-row';\n")
-                .append("  });\n")
-                .append("}\n")
-                .append("function filterTab(tabId, inputId) {\n")
-                .append("  const q = document.getElementById(inputId).value.toLowerCase();\n")
-                .append("  document.querySelectorAll('#' + tabId + ' tbody tr').forEach(row => {\n")
-                .append("    row.style.display = row.innerText.toLowerCase().includes(q)\n")
-                .append("      ? 'table-row' : 'none';\n")
-                .append("  });\n")
-                .append("}\n")
-                .append("</script>\n")
-                .append("</head>\n<body>\n");
-        html.append("<h1 style='text-align:center; margin-bottom:20px;text-decoration: underline;'>")
-                .append("Test Case Development Code Mapping Report")
-                .append("</h1>\n");
-        html.append("<div style='color:#003366; margin-bottom:20px;text-align:center;'>")
-                .append("Automated Test ↔ Source Code Traceability</div>");
-        // ---------------- TABS ----------------
-        html.append("<div class='tabs' style='text-align:center; margin-bottom:20px;'>")
-                //Tab 1- Test Case Execution Status
-                .append("<div id='tab1-tab' class='tab active' ")
-                .append("style='display:inline-block; font-weight:bold; margin-left:10px;' ")
-                .append("onclick=\"showTab('tab1')\">")
-                .append("Test Execution Status</div>")
-                //Tab 2- Test ↔ Dev Covered Methods
-                .append("<div id='tab2-tab' class='tab' ")
-                .append("style='display:inline-block; font-weight:bold;' ")
-                .append("onclick=\"showTab('tab2')\">")
-                .append("Test ↔ Dev Covered Methods</div>")
-                //Tab 3- Test ↔ Dev UnCovered Methods
-                .append("<div id='tab3-tab' class='tab' ")
-                .append("style='display:inline-block; font-weight:bold; margin-left:10px;' ")
-                .append("onclick=\"showTab('tab3')\">")
-                .append("Test ↔ Dev UnCovered Methods</div>")
-                //Tab 4- Obsolete Test Cases
-                .append("<div id='tab4-tab' class='tab' ")
-                .append("style='display:inline-block; font-weight:bold; margin-left:10px;' ")
-                .append("onclick=\"showTab('tab4')\">")
-                .append("Obsolete Test Cases</div>")
-                .append("</div>\n");
+        // ============================
+        // HTML HEADER
+        // ============================
+        html.append("""
+<!DOCTYPE html>
+<html>
+<head>
+<title>Test ↔ Dev Coverage Report</title>
+<style>
+body { font-family: Arial; padding: 20px; }
+.tabs { margin-bottom: 15px; text-align:center; }
+.tab { display:inline-block; padding:10px 15px; cursor:pointer; background:#eee; margin-right:5px; font-weight:bold; }
+.tab.active { background:#4285f4; color:white; }
+.tab-content { display:none; }
+.tab-content.active { display:block; }
+table { width:100%; border-collapse:collapse; margin-top:10px; }
+th, td { border:1px solid #ccc; padding:8px; }
+th { background:#f4f4f4; }
+tr.test-row { background:#e8f0fe; cursor:pointer; }
+tr.dev-row { display:none; background:#fafafa; }
+tr.no-dev { background:#ffebeb; color:#a00000; }
+</style>
+
+<script>
+function showTab(id) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.getElementById(id + '-tab').classList.add('active');
+}
+function toggle(cls) {
+  document.querySelectorAll('.' + cls).forEach(r => {
+    r.style.display = r.style.display === 'table-row' ? 'none' : 'table-row';
+  });
+}
+function filterTab(tabId, inputId) {
+  const q = document.getElementById(inputId).value.toLowerCase();
+  document.querySelectorAll('#' + tabId + ' tbody tr').forEach(row => {
+    row.style.display = row.innerText.toLowerCase().includes(q) ? 'table-row' : 'none';
+  });
+}
+</script>
+</head>
+<body>
+
+<h1 style="text-align:center; text-decoration:underline;">
+Test Case ↔ Development Code Mapping Report
+</h1>
+<div style="color:#003366; margin-bottom:20px;text-align:center;">
+Automated Test ↔ Source Code Traceability
+</div>
+
+<div class="tabs">
+  <div id="tab1-tab" class="tab active" onclick="showTab('tab1')">Test Execution Status</div>
+  <div id="tab2-tab" class="tab" onclick="showTab('tab2')">Test ↔ Dev Covered Methods</div>
+  <div id="tab3-tab" class="tab" onclick="showTab('tab3')">Uncovered Dev Methods</div>
+  <div id="tab4-tab" class="tab" onclick="showTab('tab4')">Obsolete Tests</div>
+</div>
+""");
+
         // ============================================================
         // TAB 1 : TEST EXECUTION STATUS
         // ============================================================
-        html.append("<div id='tab1' class='tab-content active'>\n");
-        html.append("<h3>📊 Test Case Execution Status</h3>\n");
-        html.append("<input ")
-                .append("id='search-tab1' ")
-                .append("onkeyup=\"filterTab('tab1','search-tab1')\" ")
-                .append("placeholder='Search test execution status...' ")
-                .append("style='width:300px; padding:6px; margin-bottom:10px;' />");
-        html.append("<table>\n<thead><tr>")
-                .append("<th>TestClass</th>")
-                .append("<th>TestCase</th>")
-                .append("<th>Status</th>")
-                .append("</tr></thead><tbody>\n");
-        for (var entry : testExecutionStatus.entrySet()) {
-            String[] parts = entry.getKey().split("\\.");
-            String status = entry.getValue();
+        html.append("<div id='tab1' class='tab-content active'>");
+        html.append("<h3>📊 Test Execution Status</h3>");
+        html.append("<table><thead><tr><th>TestClass</th><th>TestCase</th><th>Status</th></tr></thead><tbody>");
+
+        for (var e : testExecutionStatus.entrySet()) {
+            String[] parts = e.getKey().split("\\.", 2);
+            String status = e.getValue();
             String color =
                     "PASSED".equals(status) ? "#d4edda" :
                             "FAILED".equals(status) ? "#f8d7da" :
-                                    "SKIPPED".equals(status) ? "#fff3cd" :
-                                            "#eeeeee";
-            html.append("<tr style='background-color:")
-                    .append(color).append(";'>")
+                                    "SKIPPED".equals(status) ? "#fff3cd" : "#eeeeee";
+
+            html.append("<tr style='background:").append(color).append("'>")
                     .append("<td>").append(parts[0]).append("</td>")
-                    .append("<td>").append(parts[1]).append("</td>")
-                    .append("<td>").append(status).append("</td>")
-                    .append("</tr>\n");
+                    .append("<td>").append(parts.length > 1 ? parts[1] : "").append("</td>")
+                    .append("<td>").append(status).append("</td></tr>");
         }
-        html.append("</tbody></table>");
-        html.append("</div>"); // END TAB 4
+
+        html.append("</tbody></table></div>");
+
         // ============================================================
         // TAB 2 : TEST ↔ DEV MAPPING
         // ============================================================
-        html.append("<div id='tab2' class='tab-content'>\n");
-        html.append("<h3>✅ Test Cases with Dev Function Mapping</h3>\n");
-        html.append("<input ")
-                .append("id='search-tab2' ")
-                .append("onkeyup=\"filterTab('tab2','search-tab2')\" ")
-                .append("placeholder='Search test cases or dev methods...' ")
-                .append("style='width:300px; padding:6px; margin-bottom:10px;' />");
-        html.append("<table>\n<thead><tr>")
-                .append("<th>TestClass</th><th>TestCase</th><th>DevClass</th><th>DevMethod</th>")
-                .append("</tr></thead><tbody>\n");
+        html.append("<div id='tab2' class='tab-content'>");
+        html.append("<h3>✅ Test ↔ Dev Mapping</h3>");
+        html.append("<table><thead><tr><th>TestClass</th><th>TestCase</th><th>DevClass</th><th>DevMethod</th></tr></thead><tbody>");
+
         int idx = 0;
         for (var entry : testToMethods.entrySet()) {
-            List<String> devMethods = entry.getValue();
-            if (devMethods == null || devMethods.isEmpty()) continue;
-            String[] testParts = entry.getKey().split("\\.");
+            if (entry.getValue() == null || entry.getValue().isEmpty()) continue;
+
+            String[] testParts = entry.getKey().split("\\.", 2);
             String grp = "grp" + idx++;
 
-            html.append("<tr class='test-row'")
-                    .append(grp).append("')\">")
+            html.append("<tr class='test-row'>")
                     .append("<td>").append(testParts[0]).append("</td>")
-                    .append("<td>").append(testParts[1]).append("</td>")
-                    .append("<td colspan='2'>")
-                    .append("<a href='javascript:void(0)' ")
-                    .append("onclick=\"toggle('").append(grp).append("')\" ")
-                    .append("style='color:#1a73e8; text-decoration:underline;'>")
-                    .append("Click to expand")
-                    .append("</a>")
-                    .append("</td>")
-                    .append("</tr>\n");
+                    .append("<td>").append(testParts.length > 1 ? testParts[1] : "").append("</td>")
+                    .append("<td colspan='2'><a href='javascript:void(0)' onclick=\"toggle('")
+                    .append(grp).append("')\">Expand</a></td></tr>");
 
-            for (String dev : devMethods) {
-                String[] devParts = dev.split("\\.");
+            for (String dev : entry.getValue()) {
+                int d = dev.lastIndexOf(".");
+                String devClass = d > 0 ? dev.substring(0, d) : dev;
+                String devMethod = d > 0 ? dev.substring(d + 1) : "";
+
                 html.append("<tr class='dev-row ").append(grp).append("'>")
                         .append("<td></td><td></td>")
-                        .append("<td>").append(devParts[0]).append("</td>")
-                        .append("<td>").append(devParts[1]).append("</td>")
-                        .append("</tr>\n");
+                        .append("<td>").append(devClass).append("</td>")
+                        .append("<td>").append(devMethod).append("</td></tr>");
             }
         }
-        html.append("</tbody></table>");
-        html.append("</div>"); // END TAB 1
+
+        html.append("</tbody></table></div>");
+
         // ============================================================
         // TAB 3 : UNCOVERED DEV METHODS
         // ============================================================
         html.append("<div id='tab3' class='tab-content'>");
-        html.append("<h3>❌ Dev Methods Not Covered by Any Test</h3>\n");
-        html.append("<input ")
-                .append("id='search-tab3' ")
-                .append("onkeyup=\"filterTab('tab3','search-tab3')\" ")
-                .append("placeholder='Search uncovered dev methods...' ")
-                .append("style='width:300px; padding:6px; margin-bottom:10px;' />");
-        html.append("<table>\n<thead><tr>")
-                .append("<th>DevClass</th><th>DevMethod</th>")
-                .append("</tr></thead><tbody>\n");
+        html.append("<h3>❌ Uncovered Dev Methods</h3>");
+        html.append("<table><thead><tr><th>DevClass</th><th>DevMethod</th></tr></thead><tbody>");
 
         for (String dev : uncoveredDevMethods) {
-            String[] parts = dev.split("\\.");
+            int d = dev.lastIndexOf(".");
             html.append("<tr class='no-dev'>")
-                    .append("<td>").append(parts[0]).append("</td>")
-                    .append("<td>").append(parts[1]).append("</td>")
-                    .append("</tr>\n");
+                    .append("<td>").append(d > 0 ? dev.substring(0, d) : dev).append("</td>")
+                    .append("<td>").append(d > 0 ? dev.substring(d + 1) : "").append("</td></tr>");
         }
 
-        html.append("</tbody></table>");
-        html.append("</div>");
-        // END TAB 3
+        html.append("</tbody></table></div>");
+
         // ============================================================
-        // TAB 4 : OBSOLETE TEST CASES
+        // TAB 4 : OBSOLETE TESTS
         // ============================================================
-        html.append("<div id='tab4' class='tab-content'>\n");
-        html.append("<h3>🚫 Obsolete Test Cases</h3>\n");
-        html.append("<input ")
-                .append("id='search-tab4' ")
-                .append("onkeyup=\"filterTab('tab4','search-tab4')\" ")
-                .append("placeholder='Search test cases...' ")
-                .append("style='width:300px; padding:6px; margin-bottom:10px;' />");
-        html.append("<table>\n<thead><tr>")
-                .append("<th>TestClass</th><th>TestCase</th>")
-                .append("</tr></thead><tbody>\n");
+        html.append("<div id='tab4' class='tab-content'>");
+        html.append("<h3>🚫 Obsolete Test Cases</h3>");
+        html.append("<table><thead><tr><th>TestClass</th><th>TestCase</th></tr></thead><tbody>");
+
         for (String test : noCoverageTests) {
-            String[] parts = test.split("\\.");
+            String[] parts = test.split("\\.", 2);
             html.append("<tr class='no-dev'>")
                     .append("<td>").append(parts[0]).append("</td>")
-                    .append("<td>").append(parts[1]).append("</td>")
-                    .append("</tr>\n");
+                    .append("<td>").append(parts.length > 1 ? parts[1] : "").append("</td></tr>");
         }
-        html.append("</tbody></table>");
-        html.append("</div>"); // END TAB 4
+
+        html.append("</tbody></table></div>");
         html.append("</body></html>");
+
         return html.toString();
     }
 }

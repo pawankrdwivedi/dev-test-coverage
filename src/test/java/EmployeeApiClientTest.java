@@ -1,5 +1,5 @@
-import app.api.Employee;
-import app.calculator.EmployeeApiClient;
+import com.iris.automation.app.api.Employee;
+import com.iris.automation.app.calculator.EmployeeApiClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import mapping.ExecutionTracker;
 import org.junit.jupiter.api.*;
@@ -14,20 +14,16 @@ public class EmployeeApiClientTest {
     EmployeeApiClient client;
 
     @BeforeEach
-    void setUpAll(TestInfo info) {
-        System.out.println("Running integration tests against: " + BASE_URL);
+    void init(TestInfo info) {
         ExecutionTracker.setCurrentTest(this.getClass(), info.getTestMethod().get().getName());
     }
-
-
     @AfterAll
-    public static void tearDownAll() throws Exception {
-        System.out.println("Integration tests finished.");
+    public static void dumpMapping() throws Exception {
         ExecutionTracker.writeReport(ConfigReader.getProperty("test-method-mapping.location"));
     }
 
     @Test
-    public void tc_GetAllEmployees() throws Exception {
+    public void test_case_GetAllEmployees() throws Exception {
         client=new EmployeeApiClient(BASE_URL);
         List<Employee> employees = client.getAllEmployees();
         //assertThat(employees).isNotNull();
@@ -37,7 +33,7 @@ public class EmployeeApiClientTest {
 
 
     @Test
-    public void tc_GetEmployeeById() throws Exception {
+    public void test_case_GetEmployeeById() throws Exception {
         client=new EmployeeApiClient(BASE_URL);
         Employee emp = client.getEmployeeById("1");
         //assertThat(emp).isNotNull();
@@ -48,7 +44,7 @@ public class EmployeeApiClientTest {
 
 
     @Test
-    public void tc_CreateAndDeleteEmployee() throws Exception {
+    public void test_case_CreateAndDeleteEmployee() throws Exception {
         client=new EmployeeApiClient(BASE_URL);
         // Create a new employee (note: the demo API accepts create but may not persist it long-term)
         Employee toCreate = new Employee(null, "Integration User", "1234", "29", "");
@@ -68,7 +64,7 @@ public class EmployeeApiClientTest {
         }
     }
     @Test
-    public void tc_UpdateEmployee() throws Exception {
+    public void test_case_UpdateEmployee() throws Exception {
         // The demo API may accept updates for a specific id (e.g. 21). We'll send an update
         // and assert we receive a response object back. The remote service may not persist changes.
         client=new EmployeeApiClient(BASE_URL);

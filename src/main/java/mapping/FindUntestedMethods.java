@@ -12,7 +12,7 @@ public class FindUntestedMethods {
         ObjectMapper mapper = new ObjectMapper();
 
         Map<String, List<String>> devJson = mapper.readValue(
-                new File("target/dev-methods.json"),
+                new File(ConfigReader.getProperty("dev-methods.location")),
                 new TypeReference<Map<String, List<String>>>() {}
         );
 

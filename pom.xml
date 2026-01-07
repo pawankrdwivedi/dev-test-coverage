@@ -11,6 +11,7 @@
         <junit.version>5.10.2</junit.version>
         <jackson.version>2.19.2</jackson.version>
         <aspectj.version>1.9.25</aspectj.version>
+        <javaparser.version>3.26.3</javaparser.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -58,7 +59,7 @@
         <dependency>
             <groupId>com.github.javaparser</groupId>
             <artifactId>javaparser-core</artifactId>
-            <version>3.26.3</version>
+            <version>${javaparser.version}</version>
         </dependency>
     </dependencies>
     <build>
@@ -78,30 +79,12 @@
                 <version>3.5.4</version>
                 <configuration>
                     <testFailureIgnore>true</testFailureIgnore>
-                    <reportFormat>json</reportFormat>
+<!--                    <reportFormat>json</reportFormat>-->
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <argLine>
                         -javaagent:${settings.localRepository}/org/aspectj/aspectjweaver/${aspectj.version}/aspectjweaver-${aspectj.version}.jar
                     </argLine>
                 </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>3.1.0</version>
-                <executions>
-                    <execution>
-                        <id>generate-custom-reports</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>java</goal>
-                        </goals>
-                        <configuration>
-                            <mainClass>mapping.GenerateCustomReport</mainClass>
-                            <classpathScope>test</classpathScope>
-                        </configuration>
-                    </execution>
-                </executions>
             </plugin>
         </plugins>
     </build>
