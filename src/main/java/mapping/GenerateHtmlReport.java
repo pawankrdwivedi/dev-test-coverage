@@ -6,7 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 
-public class GenerateHtmlReport {
+public class GenerateHtmlReport_v_1 {
 
     public static void generateHtmlReport() throws Exception {
 
@@ -98,86 +98,44 @@ public class GenerateHtmlReport {
         // ============================
         // HTML HEADER
         // ============================
-        html.append("""
-<!DOCTYPE html>
-<html>
-<head>
-<title>Test ↔ Dev Coverage Report</title>
-<style>
-body { font-family: Arial; padding: 20px; }
-.tabs { margin-bottom: 15px; text-align:center; }
-.tab { display:inline-block; padding:10px 15px; cursor:pointer; background:#eee; margin-right:5px; font-weight:bold; }
-.tab.active { background:#4285f4; color:white; }
-.tab-content { display:none; }
-.tab-content.active { display:block; }
-table { width:100%; border-collapse:collapse; margin-top:10px; }
-th, td { border:1px solid #ccc; padding:8px; }
-th { background:#f4f4f4; }
-tr.test-row { background:#e8f0fe; cursor:pointer; }
-tr.dev-row { display:none; background:#fafafa; }
-tr.no-dev { background:#ffebeb; color:#a00000; }
-</style>
-
-<script>
-function showTab(id) {
-  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  document.getElementById(id + '-tab').classList.add('active');
-}
-function toggle(cls) {
-  document.querySelectorAll('.' + cls).forEach(r => {
-    r.style.display = r.style.display === 'table-row' ? 'none' : 'table-row';
-  });
-}
-function filterTab(tabId, inputId) {
-  const q = document.getElementById(inputId).value.toLowerCase();
-  document.querySelectorAll('#' + tabId + ' tbody tr').forEach(row => {
-    row.style.display = row.innerText.toLowerCase().includes(q) ? 'table-row' : 'none';
-  });
-}
-</script>
-</head>
-<body>
-
-<h1 style="text-align:center; text-decoration:underline;">
-Test Case ↔ Development Code Mapping Report
-</h1>
-<div style="color:#003366; margin-bottom:20px;text-align:center;">
-Automated Test ↔ Source Code Traceability
-</div>
-
-<div class="tabs">
-  <div id="tab1-tab" class="tab active" onclick="showTab('tab1')">Test Execution Status</div>
-  <div id="tab2-tab" class="tab" onclick="showTab('tab2')">Test ↔ Dev Covered Methods</div>
-  <div id="tab3-tab" class="tab" onclick="showTab('tab3')">Uncovered Dev Methods</div>
-  <div id="tab4-tab" class="tab" onclick="showTab('tab4')">Obsolete Tests</div>
-</div>
-""");
-
+        html.append(HtmlTemplate.header());
+        /*html.append("<div class='tabs'>")
+                .append("<div id='tab1-tab' class='tab active' onclick=\"showTab('tab1')\">")
+                .append("Test Execution Status</div>")
+                .append("<div id='tab2-tab' class='tab' onclick=\"showTab('tab2')\">")
+                .append("Test ↔ Dev Covered Methods</div>")
+                .append("<div id='tab3-tab' class='tab' onclick=\"showTab('tab3')\">")
+                .append("Uncovered Dev Methods</div>")
+                .append("<div id='tab4-tab' class='tab' onclick=\"showTab('tab4')\">")
+                .append("Obsolete Test Cases</div>")
+                .append("</div>");
+        */
         // ============================================================
         // TAB 1 : TEST EXECUTION STATUS
         // ============================================================
         html.append("<div id='tab1' class='tab-content active'>");
         html.append("<h3>📊 Test Execution Status</h3>");
         html.append("<table><thead><tr><th>TestClass</th><th>TestCase</th><th>Status</th></tr></thead><tbody>");
-
         for (var e : testExecutionStatus.entrySet()) {
-            String[] parts = e.getKey().split("\\.", 2);
+            String fullKey = e.getKey();
+            // com.iris.automation.tests.CalculatorTest.test_case_SubtractMultiply
+            int lastDot = fullKey.lastIndexOf(".");
+            String fullClassName = lastDot > 0 ? fullKey.substring(0, lastDot) : fullKey;
+            String testMethod = lastDot > 0 ? fullKey.substring(lastDot + 1) : "";
+            // Extract simple class name (remove package)
+            int classDot = fullClassName.lastIndexOf(".");
+            String testClass = classDot > 0 ? fullClassName.substring(classDot + 1) : fullClassName;
             String status = e.getValue();
             String color =
                     "PASSED".equals(status) ? "#d4edda" :
                             "FAILED".equals(status) ? "#f8d7da" :
                                     "SKIPPED".equals(status) ? "#fff3cd" : "#eeeeee";
-
             html.append("<tr style='background:").append(color).append("'>")
-                    .append("<td>").append(parts[0]).append("</td>")
-                    .append("<td>").append(parts.length > 1 ? parts[1] : "").append("</td>")
+                    .append("<td>").append(testClass).append("</td>")
+                    .append("<td>").append(testMethod).append("</td>")
                     .append("<td>").append(status).append("</td></tr>");
         }
-
         html.append("</tbody></table></div>");
-
         // ============================================================
         // TAB 2 : TEST ↔ DEV MAPPING
         // ============================================================
@@ -234,16 +192,23 @@ Automated Test ↔ Source Code Traceability
         html.append("<div id='tab4' class='tab-content'>");
         html.append("<h3>🚫 Obsolete Test Cases</h3>");
         html.append("<table><thead><tr><th>TestClass</th><th>TestCase</th></tr></thead><tbody>");
-
         for (String test : noCoverageTests) {
-            String[] parts = test.split("\\.", 2);
-            html.append("<tr class='no-dev'>")
-                    .append("<td>").append(parts[0]).append("</td>")
-                    .append("<td>").append(parts.length > 1 ? parts[1] : "").append("</td></tr>");
-        }
+            // test = com.iris.automation.tests.CalculatorTest.test_case_junk_test_cases
+            int lastDot = test.lastIndexOf(".");
+            String fullClassName = lastDot > 0 ? test.substring(0, lastDot) : test;
+            String testMethod = lastDot > 0 ? test.substring(lastDot + 1) : "";
 
+            int classDot = fullClassName.lastIndexOf(".");
+            String testClass = classDot > 0
+                    ? fullClassName.substring(classDot + 1)
+                    : fullClassName;
+            html.append("<tr class='no-dev'>")
+                    .append("<td>").append(testClass).append("</td>")
+                    .append("<td>").append(testMethod).append("</td>")
+                    .append("</tr>");
+        }
         html.append("</tbody></table></div>");
-        html.append("</body></html>");
+        html.append(HtmlTemplate.footer());
 
         return html.toString();
     }
